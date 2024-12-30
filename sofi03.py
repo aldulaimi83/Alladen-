@@ -8,12 +8,15 @@ import time
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 
 # Email Configuration
 EMAIL_ADDRESS = "aldulaimi_ahmed83@yahoo.com"  # Replace with your email
 EMAIL_PASSWORD = "SSDD12345ssdd"          # Replace with your email password
 TO_EMAIL = "aldulaimi_ahmed@yahoo.com"  # Replace with recipient's email
 
+prediction_days = 5 #Globalizing for the chart
 # Send Email Notification
 def send_email(subject, body):
     try:
@@ -83,7 +86,7 @@ def train_model(features, target):
     return model
 
 # Predict future prices
-def predict_future(model, last_row, days=5):
+def predict_future(model, last_row, days=prediction_days):
     future_predictions = []
     for _ in range(days):
         features = np.array([last_row]).reshape(1, -1)
@@ -97,8 +100,22 @@ def predict_future(model, last_row, days=5):
         last_row[5:] = prediction  # Adjust Bollinger bands to follow the predicted price
     return future_predictions
 
+#Chart plotting for prediction
+def chart(future_predictions):
+    t_days = []
+    for i in range(prediction_days):
+        t_days.append(i+1)
+    plt.figure(figsize=(10, 6))
+    plt.plot(t_days, future_predictions, marker='o')
+
+    plt.xlabel("Days")
+    plt.ylabel("Share Prediciton Value")
+    plt.title(f"Prediction of {ticker} over {prediction_days} days")
+    plt.tight_layout()
+    plt.show()
 # Main function
 def main():
+    global ticker
     ticker = "SOFI"
     print(f"Fetching data for {ticker}...")
 
@@ -116,7 +133,10 @@ def main():
 
         print("Predicting future prices...")
         last_row = features.iloc[-1].values  # Use the last row of features as a starting point
-        future_predictions = predict_future(model, last_row, days=5)
+        future_predictions = predict_future(model, last_row, days=prediction_days)
+
+        #Adding chart visibility with matplotlib
+        chart(future_predictions)
         print(f"Predicted prices for the next 5 days: {future_predictions}")
 
         # Send email with predictions
