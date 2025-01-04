@@ -11,6 +11,14 @@ import talib as ta
 import xgboost as xgb
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from flask import Flask, jsonify, request, render_template, Response
+import os
+
+'''
+Uploading onto the web server, the only thing that needs to be 
+using Flask methods is the prediction function. The ML function 
+does not need to be a Flask method.
+'''
 
 # Step 1: Download data from yfinance
 def fetch_data(ticker, start_date, end_date):
@@ -123,7 +131,8 @@ def train_model(X_train, y_train):
     return model
 
 # Step 5: Evaluate the Model
-def evaluate_model(model, X_test, y_test):
+
+def evaluate_model(model, X_test, y_test, ticker):
     y_pred = model.predict(X_test)
     
     y_test_reshaped = y_test.values.astype(float).reshape(-1) #Need to become 1D array for evaluation
@@ -136,6 +145,7 @@ def evaluate_model(model, X_test, y_test):
     print(f'R² Score: {r2}')
     
     # Plotting the actual vs predicted values
+    
     plt.figure(figsize=(12, 6))
     plt.plot(y_test.index, y_test, label='Actual', color='blue')
     plt.plot(y_test.index, y_pred, label='Predicted', color='red')
@@ -145,11 +155,15 @@ def evaluate_model(model, X_test, y_test):
     ax = plt.gca()
     ax.yaxis.set_major_locator(plt.MaxNLocator(nbins=10))
     plt.legend()
-    plt.show()
-
-
-
-
+    
+    
+     # Save the plot as an image file
+    plot_path = os.path.join('static', 'plot.png')
+    plt.savefig(plot_path)
+    plt.close()
+    
+    return plot_path, mse, mae, r2
+  
 def time_series_cross_val(X, y):
     tscv = TimeSeriesSplit(n_splits=5)
     for train_index, test_index in tscv.split(X):
@@ -195,11 +209,12 @@ def predict_future(model, scaler, ticker):
     print(f"Predicted next day closing price for {ticker}: {predicted_price[0]:.2f}")
 
 # Main Function to Run the Model
+'''
 def main():
     # Input ticker from user
     #ticker = input("Enter the ticker symbol: ").upper()
     global ticker
-    ticker = 'RGTI'
+    ticker = request.form['ticker']
     # Define the period for the data (e.g., last 1 year)
     end_date = datetime.datetime.today().strftime('%Y-%m-%d')
     start_date = (datetime.datetime.today() - datetime.timedelta(days=1095)).strftime('%Y-%m-%d')
@@ -221,13 +236,12 @@ def main():
     model = train_model(X_train, y_train_reshaped)
     
     # Step 5: Evaluate the model
-    evaluate_model(model, X_test, y_test)
+    plot_path = evaluate_model(model, X_test, y_test)
 
     X = df.drop(columns=['Close'])
     y = df['Close']
-    time_series_cross_val(X.values, y.values.astype(float).reshape(-1))
+    #time_series_cross_val(X.values, y.values.astype(float).reshape(-1))
     # Step 6: Predict the future price for the input ticker
     predict_future(model, scaler, ticker)
-
-if __name__ == "__main__":
-    main()
+    return render_template('result.html', plot_url=plot_path)
+'''
